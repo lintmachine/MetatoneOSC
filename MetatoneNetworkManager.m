@@ -10,8 +10,17 @@
 #import "MetatoneNetworkManager.h"
 #define DEFAULT_PORT 51200
 #define DEFAULT_ADDRESS @"10.0.1.2"
+//#define DEFAULT_ADDRESS @"metatonetransfer.com"
+
+//#define METATONE_CLASSIFIER_HOSTNAME @"determinist.local."
+#define METATONE_CLASSIFIER_HOSTNAME @"metatonetransfer.com"
+#define METATONE_CLASSIFIER_PORT @"8888"
+#define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._http._tcp"
+
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
 #define OSCLOGGER_SERVICE_TYPE @"_osclogger._udp."
+
+#define USE_WEBSOCKET_CLASSIFIER @YES
 
 @implementation MetatoneNetworkManager
 // Designated Initialiser
@@ -33,11 +42,15 @@
     [self.oscClient setPort:self.loggingPort];
     [self.oscClient connect];
     
+
     // Setup OSC Server
     self.oscServer = [[F53OSCServer alloc] init];
     [self.oscServer setDelegate:self];
     [self.oscServer setPort:DEFAULT_PORT];
     [self.oscServer startListening];
+    
+    // Connect WebSocketClassifier
+    if (USE_WEBSOCKET_CLASSIFIER) [self connectClassifierWebSocket];
     
     // register with Bonjour
     self.metatoneNetService = [[NSNetService alloc]
@@ -71,6 +84,74 @@
     return self;
 }
 
+
+# pragma mark - cloud server connection methods
+// A test connection to cloud server using DigitalOcean server
+-(void) attemptCloudServerConnection {
+    self.loggingHostname = @"metatonetransfer.com";
+    self.loggingIPAddress = @"107.170.207.234";
+    self.loggingPort = 9000;
+    
+    [self.delegate loggingServerFoundWithAddress:self.loggingIPAddress
+                                         andPort:(int)self.loggingPort
+                                     andHostname:self.loggingHostname];
+    [self sendMessageOnline];
+    NSLog(@"NETWORK MANAGER: Resolved and Connected to an OSC Logger Service.");
+}
+
+#pragma mark WebSocket Life Cycle
+
+-(void)connectClassifierWebSocket {
+    self.classifierWebSocket.delegate = nil;
+    [self.classifierWebSocket close];
+    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%@/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
+    self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
+    [self.classifierWebSocket setDelegate:self];
+    NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket.");
+    [self.classifierWebSocket open];
+
+}
+
+-(void)closeClassifierWebSocket {
+    [self sendMessageOffline];
+    [self.classifierWebSocket close];
+}
+
+-(void)webSocketDidOpen:(SRWebSocket *)webSocket {
+    [self sendMessageOnline];
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened.");
+}
+
+-(void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Closed.");
+    self.classifierWebSocket = nil;
+}
+
+-(void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error {
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Failed.");
+    self.classifierWebSocket = nil;
+}
+
+-(void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
+    // process the message somehow with F53OSC.
+    NSLog(@"NETWORK MANAGER: Received a message via webSocket, going to parse.");
+    NSData *messageData = (NSData *)message;
+    [F53OSCParser processOscData:messageData forDestination:self replyToSocket:nil]; // This should activate the "takeMessage" method
+}
+
+-(void)sendToWebClassifier:(F53OSCMessage *)message {
+    if (self.classifierWebSocket.readyState == SR_OPEN && USE_WEBSOCKET_CLASSIFIER) {
+        NSData *messageData = [(F53OSCPacket *)message packetData];
+        [self.classifierWebSocket send:messageData];
+        NSLog(@"NETWORK MANAGER: Message sent to WebSocket.");
+    } else {
+        NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed. Trying to connect.");
+        if(USE_WEBSOCKET_CLASSIFIER) [self connectClassifierWebSocket];
+    }
+}
+
+
+# pragma mark Searching Lifecycle
 -(void) stopSearches
 {
     [self.metatoneServiceBrowser stop];
@@ -177,6 +258,8 @@
     [self.delegate stoppedSearchingForLoggingServer];
 }
 
+
+
 # pragma mark OSC Sending Methods
 -(void)sendMessageWithAccelerationX:(double)x Y:(double)y Z:(double)z
 {
@@ -187,6 +270,7 @@
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/acceleration"
                                                         arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 -(void)sendMessageWithTouch:(CGPoint)point Velocity:(CGFloat)vel
@@ -198,6 +282,7 @@
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/touch"
                                                             arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 -(void)sendMesssageSwitch:(NSString *)name On:(BOOL)on
@@ -208,6 +293,7 @@
                           switchState];
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/switch" arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 -(void)sendMessageTouchEnded
@@ -215,6 +301,7 @@
     NSArray *contents = @[self.deviceID];
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/touch/ended" arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 -(void)sendMessageOnline
@@ -222,6 +309,7 @@
     NSArray *contents = @[self.deviceID,self.appID];
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/online" arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 -(void)sendMessageOffline
@@ -230,6 +318,7 @@
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/offline"
                                                             arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
 }
 
 
@@ -242,6 +331,7 @@
 
     // Log the metatone messages as well.
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message]; // hope this works!
     
     // Send to each metatone app on the network.
     for (NSArray *address in self.remoteMetatoneIPAddresses) {
