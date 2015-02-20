@@ -14,7 +14,7 @@
 
 //#define METATONE_CLASSIFIER_HOSTNAME @"determinist.local."
 #define METATONE_CLASSIFIER_HOSTNAME @"metatonetransfer.com"
-#define METATONE_CLASSIFIER_PORT @"8888"
+#define METATONE_CLASSIFIER_PORT 8888
 #define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._http._tcp"
 
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
@@ -104,7 +104,7 @@
 -(void)connectClassifierWebSocket {
     self.classifierWebSocket.delegate = nil;
     [self.classifierWebSocket close];
-    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%@/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
+    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%d/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
     self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
     [self.classifierWebSocket setDelegate:self];
     NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket.");
@@ -120,6 +120,7 @@
 -(void)webSocketDidOpen:(SRWebSocket *)webSocket {
     [self sendMessageOnline];
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened.");
+    [self.delegate loggingServerFoundWithAddress:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT andHostname:METATONE_CLASSIFIER_HOSTNAME];
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
