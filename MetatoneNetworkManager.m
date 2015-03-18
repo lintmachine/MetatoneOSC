@@ -8,19 +8,24 @@
 //
 
 #import "MetatoneNetworkManager.h"
+
+#define USE_WEBSOCKET_CLASSIFIER @YES
+
 #define DEFAULT_PORT 51200
-#define DEFAULT_ADDRESS @"10.0.1.2"
+//#define DEFAULT_ADDRESS @"10.0.1.2"
+#define DEFAULT_ADDRESS @"10.0.1.199"
 //#define DEFAULT_ADDRESS @"metatonetransfer.com"
 
 //#define METATONE_CLASSIFIER_HOSTNAME @"determinist.local."
 #define METATONE_CLASSIFIER_HOSTNAME @"metatonetransfer.com"
+//#define METATONE_CLASSIFIER_HOSTNAME @"localhost"
+
 #define METATONE_CLASSIFIER_PORT 8888
 #define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._http._tcp"
-
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
 #define OSCLOGGER_SERVICE_TYPE @"_osclogger._udp."
 
-#define USE_WEBSOCKET_CLASSIFIER @YES
+
 
 @implementation MetatoneNetworkManager
 // Designated Initialiser
@@ -102,8 +107,8 @@
 #pragma mark WebSocket Life Cycle
 
 -(void)connectClassifierWebSocket {
-    self.classifierWebSocket.delegate = nil;
     [self.classifierWebSocket close];
+    self.classifierWebSocket.delegate = nil;
     NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%d/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
     self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
     [self.classifierWebSocket setDelegate:self];
@@ -118,35 +123,38 @@
 }
 
 -(void)webSocketDidOpen:(SRWebSocket *)webSocket {
-    [self sendMessageOnline];
-    NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened.");
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened: %@", [webSocket description]);
     [self.delegate loggingServerFoundWithAddress:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT andHostname:METATONE_CLASSIFIER_HOSTNAME];
+    [self sendMessageOnline];
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
-    NSLog(@"NETWORK MANAGER: Classifier WebSocket Closed.");
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Closed: %@, Clean: %d", reason,wasClean);
     self.classifierWebSocket = nil;
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error {
-    NSLog(@"NETWORK MANAGER: Classifier WebSocket Failed.");
+    NSLog(@"NETWORK MANAGER: Classifier WebSocket Failed: %@", [error description]);
     self.classifierWebSocket = nil;
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
     // process the message somehow with F53OSC.
-    NSLog(@"NETWORK MANAGER: Received a message via webSocket, going to parse.");
-    NSData *messageData = (NSData *)message;
-    [F53OSCParser processOscData:messageData forDestination:self replyToSocket:nil]; // This should activate the "takeMessage" method
+//    NSLog(@"NETWORK MANAGER: Received a message via webSocket, going to parse.");
+    if ([message isKindOfClass:[NSData class]]) {
+        //    NSData *messageData = (NSData *)message;
+        NSData *messageData = [NSData dataWithBytes:[(NSData *)message bytes] length:[(NSData *)message length]];
+//        NSLog(@"NETWORK MANAGER: Here's the message: %@",[messageData description]);
+        [F53OSCParser processOscData:messageData forDestination:self replyToSocket:nil]; // This should activate the "takeMessage" method
+    }
 }
 
 -(void)sendToWebClassifier:(F53OSCMessage *)message {
-    if (self.classifierWebSocket.readyState == SR_OPEN && USE_WEBSOCKET_CLASSIFIER) {
-        NSData *messageData = [(F53OSCPacket *)message packetData];
-        [self.classifierWebSocket send:messageData];
-        NSLog(@"NETWORK MANAGER: Message sent to WebSocket.");
+    if (self.classifierWebSocket.readyState == SR_OPEN) {
+//        NSLog(@"NETWORK MANAGER: Sending Message");
+        [self.classifierWebSocket send:[message packetData]];
     } else {
-        NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed. Trying to connect.");
+        NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed.");
         if(USE_WEBSOCKET_CLASSIFIER) [self connectClassifierWebSocket];
     }
 }
@@ -260,7 +268,6 @@
 }
 
 
-
 # pragma mark OSC Sending Methods
 -(void)sendMessageWithAccelerationX:(double)x Y:(double)y Z:(double)z
 {
@@ -307,10 +314,11 @@
 
 -(void)sendMessageOnline
 {
+    NSLog(@"Constructing Online Message.");
     NSArray *contents = @[self.deviceID,self.appID];
     F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/online" arguments:contents];
     [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
-    [self sendToWebClassifier:message]; // hope this works!
+    [self sendToWebClassifier:message];
 }
 
 -(void)sendMessageOffline
@@ -345,6 +353,8 @@
 #pragma mark OSC Receiving Methods
 -(void)takeMessage:(F53OSCMessage *)message {
     // Received an OSC message
+//    NSLog(@"Message parsed, now filtering by addressPattern");
+//    NSLog(@"Here's the message now: %@", [message description]);
     if ([message.addressPattern isEqualToString:@"/metatone/app"]) {
         // InterAppmessage
         if ([message.arguments count] == 3) {
@@ -357,18 +367,20 @@
         }
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/gesture"]) {
         // Gesture Message
-        [self.delegate didReceiveGestureMessageFor:message.arguments[0] withClass:message.arguments[1]];
+        if ([message.arguments count] == 2) [self.delegate didReceiveGestureMessageFor:message.arguments[0] withClass:message.arguments[1]];
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/ensemble/state"]) {
         //Ensemble State
-        [self.delegate didReceiveEnsembleState:message.arguments[0] withSpread:message.arguments[1] withRatio:message.arguments[2]];
+        if ([message.arguments count] == 3) [self.delegate didReceiveEnsembleState:message.arguments[0] withSpread:message.arguments[1] withRatio:message.arguments[2]];
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/ensemble/event/new_idea"]) {
-        [self.delegate didReceiveEnsembleEvent:@"new_idea" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
+        if ([message.arguments count] == 2) [self.delegate didReceiveEnsembleEvent:@"new_idea" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/ensemble/event/solo"]) {
         [self.delegate didReceiveEnsembleEvent:@"solo" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/ensemble/event/parts"]) {
         [self.delegate didReceiveEnsembleEvent:@"parts" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
+    } else {
+        // Received unknown message:
+        NSLog(@"NETWORK MANAGER: Received unknown message: %@", [message description]);
     }
-
 }
 
 #pragma mark IP Address Methods

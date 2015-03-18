@@ -70,5 +70,6 @@
 - (void)sendMesssageSwitch:(NSString *)name On:(BOOL)on;
 - (void)sendMetatoneMessage:(NSString *)name withState:(NSString *)state;
 - (void)attemptCloudServerConnection;
+- (void)closeClassifierWebSocket;
 
 @end
