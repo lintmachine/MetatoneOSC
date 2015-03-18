@@ -21,7 +21,7 @@
 //#define METATONE_CLASSIFIER_HOSTNAME @"localhost"
 
 #define METATONE_CLASSIFIER_PORT 8888
-#define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._http._tcp"
+#define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._tcp."
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
 #define OSCLOGGER_SERVICE_TYPE @"_osclogger._udp."
 
@@ -55,7 +55,7 @@
     [self.oscServer startListening];
     
     // Connect WebSocketClassifier
-    if (USE_WEBSOCKET_CLASSIFIER) [self connectClassifierWebSocket];
+    if (USE_WEBSOCKET_CLASSIFIER) [self connectWebClassifierWebSocket];
     
     // register with Bonjour
     self.metatoneNetService = [[NSNetService alloc]
@@ -86,36 +86,67 @@
     [self.metatoneServiceBrowser setDelegate:self];
     [self.metatoneServiceBrowser searchForServicesOfType:METATONE_SERVICE_TYPE
                                                 inDomain:@"local."];
+    
+    
+    // try to find Metatone Web Classifier services locally
+    NSLog(@"NETWORK MANAGER: Browsing for Metatone Web Classifier Services...");
+    self.metatoneWebClassifierBrowser  = [[NSNetServiceBrowser alloc] init];
+    [self.metatoneWebClassifierBrowser setDelegate:self];
+    [self.metatoneWebClassifierBrowser searchForServicesOfType:METACLASSIFIER_SERVICE_TYPE
+                                                inDomain:@"local."];
+    
     return self;
 }
 
 
 # pragma mark - cloud server connection methods
-// A test connection to cloud server using DigitalOcean server
--(void) attemptCloudServerConnection {
-    self.loggingHostname = @"metatonetransfer.com";
-    self.loggingIPAddress = @"107.170.207.234";
-    self.loggingPort = 9000;
-    
-    [self.delegate loggingServerFoundWithAddress:self.loggingIPAddress
-                                         andPort:(int)self.loggingPort
-                                     andHostname:self.loggingHostname];
-    [self sendMessageOnline];
-    NSLog(@"NETWORK MANAGER: Resolved and Connected to an OSC Logger Service.");
-}
+//// A test connection to cloud server using DigitalOcean server
+//-(void) attemptCloudServerConnection {
+//    self.loggingHostname = @"metatonetransfer.com";
+//    self.loggingIPAddress = @"107.170.207.234";
+//    self.loggingPort = 9000;
+//    
+//    [self.delegate loggingServerFoundWithAddress:self.loggingIPAddress
+//                                         andPort:(int)self.loggingPort
+//                                     andHostname:self.loggingHostname];
+//    [self sendMessageOnline];
+//    NSLog(@"NETWORK MANAGER: Resolved and Connected to an OSC Logger Service.");
+//}
+
 
 #pragma mark WebSocket Life Cycle
 
--(void)connectClassifierWebSocket {
+//-(void)connectClassifierWebSocket {
+//    [self.classifierWebSocket close];
+//    self.classifierWebSocket.delegate = nil;
+//    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%d/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
+//    self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
+//    [self.classifierWebSocket setDelegate:self];
+//    NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket.");
+//    [self.classifierWebSocket open];
+//
+//}
+
+-(void)connectWebClassifierWebSocket {
+    [self connectClassifierWebSocketWithHostname:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT];
+}
+
+-(void)reconnectWebClassifierWebSocket {
+    [self connectClassifierWebSocketWithHostname:self.webClassifierHostname andPort:self.webClassifierPort];
+}
+
+-(void)connectClassifierWebSocketWithHostname:(NSString *)hostname andPort:(int)port {
     [self.classifierWebSocket close];
     self.classifierWebSocket.delegate = nil;
-    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%d/classifier",METATONE_CLASSIFIER_HOSTNAME,METATONE_CLASSIFIER_PORT];
+    NSString* classifierUrl = [NSString stringWithFormat:@"ws://%@:%d/classifier",hostname,port];
     self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
     [self.classifierWebSocket setDelegate:self];
-    NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket.");
+    NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket: %@:%d",hostname,port);
     [self.classifierWebSocket open];
-
+    self.webClassifierHostname = hostname; // set local variable to keep hostname
+    self.webClassifierPort = port; // set local variable to keep port
 }
+
 
 -(void)closeClassifierWebSocket {
     [self sendMessageOffline];
@@ -124,7 +155,7 @@
 
 -(void)webSocketDidOpen:(SRWebSocket *)webSocket {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened: %@", [webSocket description]);
-    [self.delegate loggingServerFoundWithAddress:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT andHostname:METATONE_CLASSIFIER_HOSTNAME];
+    [self.delegate loggingServerFoundWithAddress:self.webClassifierHostname andPort:self.webClassifierPort andHostname:self.webClassifierHostname];
     [self sendMessageOnline];
 }
 
@@ -139,23 +170,18 @@
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
-    // process the message somehow with F53OSC.
-//    NSLog(@"NETWORK MANAGER: Received a message via webSocket, going to parse.");
     if ([message isKindOfClass:[NSData class]]) {
-        //    NSData *messageData = (NSData *)message;
         NSData *messageData = [NSData dataWithBytes:[(NSData *)message bytes] length:[(NSData *)message length]];
-//        NSLog(@"NETWORK MANAGER: Here's the message: %@",[messageData description]);
         [F53OSCParser processOscData:messageData forDestination:self replyToSocket:nil]; // This should activate the "takeMessage" method
     }
 }
 
 -(void)sendToWebClassifier:(F53OSCMessage *)message {
     if (self.classifierWebSocket.readyState == SR_OPEN) {
-//        NSLog(@"NETWORK MANAGER: Sending Message");
         [self.classifierWebSocket send:[message packetData]];
     } else {
         NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed.");
-        if(USE_WEBSOCKET_CLASSIFIER) [self connectClassifierWebSocket];
+        if(USE_WEBSOCKET_CLASSIFIER) [self reconnectWebClassifierWebSocket];
     }
 }
 
@@ -206,6 +232,12 @@
         [self.oscLoggerService resolveWithTimeout:5.0];
         //TODO: sort out case of multiple OSC Loggers.
     }
+    
+    if ([[aNetService type] isEqualToString:METACLASSIFIER_SERVICE_TYPE]) {
+        self.metatoneWebClassifierNetService = aNetService;
+        [self.metatoneWebClassifierNetService setDelegate:self];
+        [self.metatoneWebClassifierNetService resolveWithTimeout:5.0];
+    }
 }
 
 -(void)netServiceDidResolveAddress:(NSNetService *)sender {
@@ -254,6 +286,11 @@
             [self.delegate metatoneClientFoundWithAddress:firstAddress andPort:firstPort andHostname:sender.hostName];
             NSLog(@"NETWORK MANAGER: Resolved and Connected to a MetatoneApp Service.");
         }
+    }
+    
+    if ([sender.type isEqualToString:METACLASSIFIER_SERVICE_TYPE] && firstAddress && firstPort) {
+        // Connect to the webclassifier.
+        [self connectClassifierWebSocketWithHostname:sender.hostName andPort:firstPort];
     }
 }
 

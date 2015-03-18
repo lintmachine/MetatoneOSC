@@ -44,10 +44,16 @@
 @property (strong, nonatomic) NSString *deviceID;
 @property (strong,nonatomic) NSString *appID;
 @property (strong, nonatomic) NSString *localIPAddress;
-@property (strong, nonatomic) NSNetService *metatoneNetService;
+
+@property (strong, nonatomic) NSString *webClassifierHostname;
+@property (nonatomic) int webClassifierPort;
+
 @property (strong, nonatomic) NSNetServiceBrowser *oscLoggerServiceBrowser;
 @property (strong, nonatomic) NSNetServiceBrowser *metatoneServiceBrowser;
+@property (strong, nonatomic) NSNetServiceBrowser *metatoneWebClassifierBrowser;
 @property (strong, nonatomic) NSNetService *oscLoggerService;
+@property (strong, nonatomic) NSNetService *metatoneNetService;
+@property (strong, nonatomic) NSNetService *metatoneWebClassifierNetService;
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneIPAddresses;
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneNetServices;
 @property (nonatomic) bool oscLogging;
@@ -69,7 +75,6 @@
 - (void)sendMessageTouchEnded;
 - (void)sendMesssageSwitch:(NSString *)name On:(BOOL)on;
 - (void)sendMetatoneMessage:(NSString *)name withState:(NSString *)state;
-- (void)attemptCloudServerConnection;
 - (void)closeClassifierWebSocket;
 
 @end
