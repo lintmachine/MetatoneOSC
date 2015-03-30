@@ -12,13 +12,9 @@
 #define USE_WEBSOCKET_CLASSIFIER @YES
 
 #define DEFAULT_PORT 51200
-//#define DEFAULT_ADDRESS @"10.0.1.2"
 #define DEFAULT_ADDRESS @"10.0.1.199"
-//#define DEFAULT_ADDRESS @"metatonetransfer.com"
 
-//#define METATONE_CLASSIFIER_HOSTNAME @"determinist.local."
 #define METATONE_CLASSIFIER_HOSTNAME @"metatonetransfer.com"
-//#define METATONE_CLASSIFIER_HOSTNAME @"localhost"
 
 #define METATONE_CLASSIFIER_PORT 8888
 #define METACLASSIFIER_SERVICE_TYPE @"_metatoneclassifier._tcp."
