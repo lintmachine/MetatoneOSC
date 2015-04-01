@@ -21,11 +21,17 @@
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
 #define OSCLOGGER_SERVICE_TYPE @"_osclogger._udp."
 
-
-
 @implementation MetatoneNetworkManager
-// Designated Initialiser
--(MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate shouldOscLog: (bool) osclogging {
+// Designated Initialisers
+
+// This initialiser just sets web classification to NO to preserve compatibility.
+-(MetatoneNetworkManager *) initWithDelegate:(id<MetatoneNetworkManagerDelegate>)delegate shouldOscLog:(bool)osclogging {
+    return [self initWithDelegate:delegate shouldOscLog:osclogging shouldConnectToWebClassifier:NO];
+}
+
+
+// This initialiser sets web classification by argument.
+-(MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate shouldOscLog: (bool) osclogging shouldConnectToWebClassifier: (bool) connectToWeb {
     self = [super init];
     
     self.delegate = delegate;
@@ -36,14 +42,12 @@
     self.loggingPort = DEFAULT_PORT;
     self.localIPAddress = [MetatoneNetworkManager getIPAddress];
 
-    
     // Setup OSC Client
     self.oscClient = [[F53OSCClient alloc] init];
     [self.oscClient setHost:self.loggingIPAddress];
     [self.oscClient setPort:self.loggingPort];
     [self.oscClient connect];
     
-
     // Setup OSC Server
     self.oscServer = [[F53OSCServer alloc] init];
     [self.oscServer setDelegate:self];
@@ -51,7 +55,8 @@
     [self.oscServer startListening];
     
     // Connect WebSocketClassifier
-    if (USE_WEBSOCKET_CLASSIFIER) [self connectWebClassifierWebSocket];
+    //    if (USE_WEBSOCKET_CLASSIFIER) [self connectWebClassifierWebSocket];
+    if (connectToWeb) [self connectWebClassifierWebSocket];
     
     // register with Bonjour
     self.metatoneNetService = [[NSNetService alloc]
@@ -83,14 +88,12 @@
     [self.metatoneServiceBrowser searchForServicesOfType:METATONE_SERVICE_TYPE
                                                 inDomain:@"local."];
     
-    
     // try to find Metatone Web Classifier services locally
     NSLog(@"NETWORK MANAGER: Browsing for Metatone Web Classifier Services...");
     self.metatoneWebClassifierBrowser  = [[NSNetServiceBrowser alloc] init];
     [self.metatoneWebClassifierBrowser setDelegate:self];
     [self.metatoneWebClassifierBrowser searchForServicesOfType:METACLASSIFIER_SERVICE_TYPE
                                                 inDomain:@"local."];
-    
     return self;
 }
 
@@ -111,7 +114,6 @@
 
 
 #pragma mark WebSocket Life Cycle
-
 //-(void)connectClassifierWebSocket {
 //    [self.classifierWebSocket close];
 //    self.classifierWebSocket.delegate = nil;

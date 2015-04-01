@@ -67,6 +67,7 @@
 
 // Designated Initialiser
 - (MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate  shouldOscLog: (bool) osclogging;
+- (MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate shouldOscLog: (bool) osclogging shouldConnectToWebClassifier: (bool) connectToWeb;
 // Stops all searches and deletes records of remote services and addresses.
 - (void)stopSearches;
 
