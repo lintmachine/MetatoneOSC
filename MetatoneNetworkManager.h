@@ -57,6 +57,8 @@
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneIPAddresses;
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneNetServices;
 @property (nonatomic) bool oscLogging;
+@property (nonatomic) bool connectToWebService;
+@property (nonatomic) bool connectToLocalWebSocket;
 
 
 @property (weak,nonatomic) id<MetatoneNetworkManagerDelegate> delegate;

@@ -38,6 +38,7 @@
     self.deviceID = [[UIDevice currentDevice].identifierForVendor UUIDString];
     self.appID = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     self.oscLogging = osclogging;
+    self.connectToWebService = connectToWeb;
     self.loggingIPAddress = DEFAULT_ADDRESS;
     self.loggingPort = DEFAULT_PORT;
     self.localIPAddress = [MetatoneNetworkManager getIPAddress];
@@ -174,10 +175,11 @@
     }
 }
 
+# pragma mark TODO fix up logic about local and remote websockets.
 -(void)sendToWebClassifier:(F53OSCMessage *)message {
     if (self.classifierWebSocket.readyState == SR_OPEN) {
         [self.classifierWebSocket send:[message packetData]];
-    } else {
+    } else if (self.connectToWebService) {
         NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed.");
         if(USE_WEBSOCKET_CLASSIFIER) [self reconnectWebClassifierWebSocket];
     }
