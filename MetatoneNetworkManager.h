@@ -57,9 +57,9 @@
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneIPAddresses;
 @property (strong, nonatomic) NSMutableArray *remoteMetatoneNetServices;
 @property (nonatomic) bool oscLogging;
-@property (nonatomic) bool connectToWebService;
+@property (nonatomic) bool connectToWebClassifier;
+@property (nonatomic) bool connectToLocalClassifier;
 @property (nonatomic) bool connectToLocalWebSocket;
-
 
 @property (weak,nonatomic) id<MetatoneNetworkManagerDelegate> delegate;
 
@@ -79,5 +79,8 @@
 - (void)sendMesssageSwitch:(NSString *)name On:(BOOL)on;
 - (void)sendMetatoneMessage:(NSString *)name withState:(NSString *)state;
 - (void)closeClassifierWebSocket;
+
+- (void) startConnectingToWebClassifier;
+- (void) stopConnectingToWebClassifier;
 
 @end

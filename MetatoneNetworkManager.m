@@ -38,7 +38,7 @@
     self.deviceID = [[UIDevice currentDevice].identifierForVendor UUIDString];
     self.appID = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     self.oscLogging = osclogging;
-    self.connectToWebService = connectToWeb;
+    self.connectToWebClassifier = connectToWeb;
     self.loggingIPAddress = DEFAULT_ADDRESS;
     self.loggingPort = DEFAULT_PORT;
     self.localIPAddress = [MetatoneNetworkManager getIPAddress];
@@ -125,6 +125,21 @@
 //    [self.classifierWebSocket open];
 //
 //}
+- (void) startConnectingToWebClassifier {
+    self.connectToWebClassifier = YES;
+    NSLog(@"NETWORK MANAGER: Request to start connecting.");
+    NSLog(@"NETWORK MANAGER: WebSocket.readyState is %d",self.classifierWebSocket.readyState);
+    if (self.classifierWebSocket.readyState == SR_CLOSED || self.classifierWebSocket.readyState == SR_CONNECTING) {
+        NSLog(@"NETWORK MANAGER: Classifier is closed, now starting to connect to WebClassifier");
+        [self connectWebClassifierWebSocket];
+    }
+}
+
+- (void) stopConnectingToWebClassifier {
+    self.connectToWebClassifier = NO;
+    [self closeClassifierWebSocket];
+}
+
 
 -(void)connectWebClassifierWebSocket {
     [self connectClassifierWebSocketWithHostname:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT];
@@ -179,7 +194,7 @@
 -(void)sendToWebClassifier:(F53OSCMessage *)message {
     if (self.classifierWebSocket.readyState == SR_OPEN) {
         [self.classifierWebSocket send:[message packetData]];
-    } else if (self.connectToWebService) {
+    } else if (self.connectToWebClassifier) {
         NSLog(@"NETWORK MANAGER: Can't send to WebSocket - Closed.");
         if(USE_WEBSOCKET_CLASSIFIER) [self reconnectWebClassifierWebSocket];
     }
@@ -193,7 +208,6 @@
     [self.oscLoggerServiceBrowser stop];
     [self.remoteMetatoneIPAddresses removeAllObjects];
     [self.remoteMetatoneNetServices removeAllObjects];
-    //[self.connection disconnect];
     [self.oscClient disconnect];
 }
 
