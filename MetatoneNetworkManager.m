@@ -392,8 +392,8 @@
 #pragma mark OSC Receiving Methods
 -(void)takeMessage:(F53OSCMessage *)message {
     // Received an OSC message
-//    NSLog(@"Message parsed, now filtering by addressPattern");
-//    NSLog(@"Here's the message now: %@", [message description]);
+//    NSLog(@"NETWORK: Message parsed, now filtering by addressPattern");
+//    NSLog(@"NETWORK: %@", [message description]);
     if ([message.addressPattern isEqualToString:@"/metatone/app"]) {
         // InterAppmessage
         if ([message.arguments count] == 3) {
