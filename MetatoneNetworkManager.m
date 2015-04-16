@@ -99,19 +99,7 @@
 }
 
 
-# pragma mark - cloud server connection methods
-//// A test connection to cloud server using DigitalOcean server
-//-(void) attemptCloudServerConnection {
-//    self.loggingHostname = @"metatonetransfer.com";
-//    self.loggingIPAddress = @"107.170.207.234";
-//    self.loggingPort = 9000;
-//    
-//    [self.delegate loggingServerFoundWithAddress:self.loggingIPAddress
-//                                         andPort:(int)self.loggingPort
-//                                     andHostname:self.loggingHostname];
-//    [self sendMessageOnline];
-//    NSLog(@"NETWORK MANAGER: Resolved and Connected to an OSC Logger Service.");
-//}
+
 
 
 #pragma mark WebSocket Life Cycle
@@ -428,11 +416,34 @@
         [self.delegate didReceiveEnsembleEvent:@"solo" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/ensemble/event/parts"]) {
         [self.delegate didReceiveEnsembleEvent:@"parts" forDevice:message.arguments[0] withMeasure:message.arguments[1]];
+    } else if ([message.addressPattern isEqualToString:@"/metatone/performance/start"]) {
+        // performance start
+        if ([message.arguments count] == 4) [self.delegate didReceivePerformanceStartEvent:message.arguments[0]
+                                                                                 forDevice:message.arguments[1]
+                                                                                  withType:message.arguments[2]
+                                                                            andComposition:message.arguments[3]];
+    } else if ([message.addressPattern isEqualToString:@"/metatone/performance/end"]) {
+        // performance stop
+        if ([message.arguments count] ==2) [self.delegate didReceivePerformanceEndEvent:message.arguments[0]
+                                                                              forDevice:message.arguments[1]];
     } else {
         // Received unknown message:
         NSLog(@"NETWORK MANAGER: Received unknown message: %@", [message description]);
     }
 }
+
+// performance start events should be of the form:
+// /metatone/performance/start (string) deviceID (int) type (composition) int
+// the type should be
+//#define PERFORMANCE_TYPE_LOCAL 0
+//#define PERFORMANCE_TYPE_REMOTE 1
+//#define EXPERIMENT_TYPE_BOTH 2
+//#define EXPERIMENT_TYPE_NONE 3
+//#define EXPERIMENT_TYPE_BUTTON 4
+//#define EXPERIMENT_TYPE_SERVER 5
+//
+// the composition is an int that corresponds to one of the available compositions,
+// for the experiment, the int can be random (as long as everybody has the same one).
 
 #pragma mark IP Address Methods
 // Get IP Address

@@ -17,7 +17,6 @@
 #import <arpa/inet.h>
 
 @protocol MetatoneNetworkManagerDelegate <NSObject>
-
 -(void) searchingForLoggingServer;
 -(void) loggingServerFoundWithAddress: (NSString *) address andPort: (int) port andHostname:(NSString *) hostname;
 -(void) stoppedSearchingForLoggingServer;
@@ -25,9 +24,10 @@
 -(void) didReceiveGestureMessageFor:(NSString*)device withClass:(NSString*)class;
 -(void) didReceiveEnsembleState:(NSString*)state withSpread:(NSNumber*)spread withRatio:(NSNumber*)ratio;
 -(void) didReceiveEnsembleEvent:(NSString*)event forDevice:(NSString*)device withMeasure:(NSNumber*)measure;
+-(void)didReceivePerformanceStartEvent:(NSString *)event forDevice:(NSString *)device withType:(NSNumber *)type andComposition:(NSNumber *)composition;
+-(void)didReceivePerformanceEndEvent:(NSString *)event forDevice:(NSString *)device;
 -(void) metatoneClientFoundWithAddress: (NSString *) address andPort: (int) port andHostname:(NSString *) hostname;
 -(void) metatoneClientRemovedwithAddress: (NSString *) address andPort: (int) port andHostname:(NSString *) hostname;
-
 @end
 
 @interface MetatoneNetworkManager : NSObject <F53OSCPacketDestination,F53OSCClientDelegate, SRWebSocketDelegate, NSNetServiceDelegate, NSNetServiceBrowserDelegate>
