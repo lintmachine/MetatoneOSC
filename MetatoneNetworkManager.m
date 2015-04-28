@@ -389,6 +389,16 @@
     }
 }
 
+- (void)sendMetatoneMessageViaServer:(NSString *)name withState:(NSString *)state {
+    NSArray *contents = @[self.deviceID,
+                          name,
+                          state];
+    F53OSCMessage *message = [F53OSCMessage messageWithAddressPattern:@"/metatone/app"
+                                                            arguments:contents];
+    [self.oscClient sendPacket:message toHost:self.loggingIPAddress onPort:self.loggingPort];
+    [self sendToWebClassifier:message];
+}
+
 #pragma mark OSC Receiving Methods
 -(void)takeMessage:(F53OSCMessage *)message {
     // Received an OSC message
@@ -401,7 +411,8 @@
                 [message.arguments[1] isKindOfClass:[NSString class]] &&
                 [message.arguments[2] isKindOfClass:[NSString class]])
             {
-                [self.delegate didReceiveMetatoneMessageFrom:message.arguments[0] withName:message.arguments[1] andState:message.arguments[2]];
+                if (![((NSString *) message.arguments[0]) isEqualToString:self.deviceID]) { // ignore self metatone messages.
+                    [self.delegate didReceiveMetatoneMessageFrom:message.arguments[0] withName:message.arguments[1] andState:message.arguments[2]];}
             }
         }
     } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/gesture"]) {
@@ -426,6 +437,8 @@
         // performance stop
         if ([message.arguments count] ==2) [self.delegate didReceivePerformanceEndEvent:message.arguments[0]
                                                                               forDevice:message.arguments[1]];
+    } else if ([message.addressPattern isEqualToString:@"/metatone/classifier/hello"]) {
+        NSLog(@"NETWORK MANAGER: Connection Handshake from Server Received.");
     } else {
         // Received unknown message:
         NSLog(@"NETWORK MANAGER: Received unknown message: %@", [message description]);

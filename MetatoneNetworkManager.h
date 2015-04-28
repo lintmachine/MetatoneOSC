@@ -78,6 +78,7 @@
 - (void)sendMessageTouchEnded;
 - (void)sendMesssageSwitch:(NSString *)name On:(BOOL)on;
 - (void)sendMetatoneMessage:(NSString *)name withState:(NSString *)state;
+- (void)sendMetatoneMessageViaServer:(NSString *)name withState:(NSString *)state;
 - (void)closeClassifierWebSocket;
 
 - (void) startConnectingToWebClassifier;
