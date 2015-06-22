@@ -21,6 +21,10 @@
 #define METATONE_SERVICE_TYPE @"_metatoneapp._udp."
 #define OSCLOGGER_SERVICE_TYPE @"_osclogger._udp."
 
+#define SERVER_DISCONNECTED 0
+#define SERVER_CONNECTING 1
+#define SERVER_CONNECTED 2
+
 @implementation MetatoneNetworkManager
 // Designated Initialisers
 
@@ -42,6 +46,8 @@
     self.loggingIPAddress = DEFAULT_ADDRESS;
     self.loggingPort = DEFAULT_PORT;
     self.localIPAddress = [MetatoneNetworkManager getIPAddress];
+    self.connectedToServer = SERVER_DISCONNECTED;
+    self.connectedToLocalPerformanceServer = NO;
 
     // Setup OSC Client
     self.oscClient = [[F53OSCClient alloc] init];
@@ -113,19 +119,24 @@
 //    [self.classifierWebSocket open];
 //
 //}
+
+#pragma TODO these two connection methods are problematic - what if they are called when already connected?
 - (void) startConnectingToWebClassifier {
     self.connectToWebClassifier = YES;
-    NSLog(@"NETWORK MANAGER: Request to start connecting.");
-    NSLog(@"NETWORK MANAGER: WebSocket.readyState is %d",self.classifierWebSocket.readyState);
-    if (self.classifierWebSocket.readyState == SR_CLOSED || self.classifierWebSocket.readyState == SR_CONNECTING) {
-        NSLog(@"NETWORK MANAGER: Classifier is closed, now starting to connect to WebClassifier");
-        [self connectWebClassifierWebSocket];
+        if (self.connectedToServer == SERVER_DISCONNECTED) {
+        NSLog(@"NETWORK MANAGER: Request to start connecting.");
+        NSLog(@"NETWORK MANAGER: WebSocket.readyState is %d",self.classifierWebSocket.readyState);
+        if (self.classifierWebSocket.readyState == SR_CLOSED || self.classifierWebSocket.readyState == SR_CONNECTING) {
+            NSLog(@"NETWORK MANAGER: Classifier is closed, now starting to connect to WebClassifier");
+            [self connectWebClassifierWebSocket];
+        }
     }
 }
 
+
 - (void) stopConnectingToWebClassifier {
     self.connectToWebClassifier = NO;
-    [self closeClassifierWebSocket];
+    if (!self.connectedToLocalPerformanceServer) [self closeClassifierWebSocket];
 }
 
 
@@ -144,31 +155,35 @@
     self.classifierWebSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:classifierUrl]]];
     [self.classifierWebSocket setDelegate:self];
     NSLog(@"NETWORK MANAGER: Opening Classifier WebSocket: %@:%d",hostname,port);
+    self.connectedToServer = SERVER_CONNECTING;
     [self.classifierWebSocket open];
     self.webClassifierHostname = hostname; // set local variable to keep hostname
     self.webClassifierPort = port; // set local variable to keep port
 }
 
-
 -(void)closeClassifierWebSocket {
     [self sendMessageOffline];
     [self.classifierWebSocket close];
+    self.connectedToServer = SERVER_DISCONNECTED;
 }
 
 -(void)webSocketDidOpen:(SRWebSocket *)webSocket {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened: %@", [webSocket description]);
     [self.delegate loggingServerFoundWithAddress:self.webClassifierHostname andPort:self.webClassifierPort andHostname:self.webClassifierHostname];
+    self.connectedToServer = SERVER_CONNECTED;
     [self sendMessageOnline];
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Closed: %@, Clean: %d", reason,wasClean);
     self.classifierWebSocket = nil;
+    self.connectedToServer = SERVER_DISCONNECTED;
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Failed: %@", [error description]);
     self.classifierWebSocket = nil;
+    self.connectedToServer = SERVER_DISCONNECTED;
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
@@ -293,17 +308,21 @@
     if ([sender.type isEqualToString:METACLASSIFIER_SERVICE_TYPE] && firstAddress && firstPort) {
         // Connect to the webclassifier.
         [self connectClassifierWebSocketWithHostname:sender.hostName andPort:firstPort];
+        self.connectedToLocalPerformanceServer = YES;
     }
 }
 
 
+#pragma TODO make sure the search and stop search delegate messages are working depending on server state.
 -(void)netServiceBrowserWillSearch:(NSNetServiceBrowser *)aNetServiceBrowser {
-    [self.delegate searchingForLoggingServer];
+//    only run this is not currently connected to anything.
+    NSLog(@"NETWORK MANAGER: Connection Status: %d", self.connectedToServer);
+    if (self.connectedToServer == SERVER_DISCONNECTED) [self.delegate searchingForLoggingServer];
 }
 
 -(void)netServiceBrowserDidStopSearch:(NSNetServiceBrowser *)aNetServiceBrowser {
     NSLog(@"NETWORK MANAGER: NetServiceBrowser stopped searching.");
-    [self.delegate stoppedSearchingForLoggingServer];
+    if (self.connectedToServer == SERVER_DISCONNECTED) [self.delegate stoppedSearchingForLoggingServer];
 }
 
 

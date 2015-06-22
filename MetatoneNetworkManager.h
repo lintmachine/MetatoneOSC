@@ -61,6 +61,9 @@
 @property (nonatomic) bool connectToLocalClassifier;
 @property (nonatomic) bool connectToLocalWebSocket;
 
+
+@property (nonatomic) bool connectedToLocalPerformanceServer;
+@property (nonatomic) int connectedToServer;
 @property (weak,nonatomic) id<MetatoneNetworkManagerDelegate> delegate;
 
 
