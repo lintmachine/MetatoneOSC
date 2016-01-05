@@ -8,7 +8,6 @@
 //
 
 #import "MetatoneNetworkManager.h"
-#include <TargetConditionals.h>
 
 #define USE_WEBSOCKET_CLASSIFIER @YES
 
@@ -25,8 +24,6 @@
 #define SERVER_DISCONNECTED 0
 #define SERVER_CONNECTING 1
 #define SERVER_CONNECTED 2
-
-
 
 @implementation MetatoneNetworkManager
 // Designated Initialisers
