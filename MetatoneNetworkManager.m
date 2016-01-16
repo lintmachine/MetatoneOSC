@@ -39,7 +39,13 @@
     self = [super init];
     
     self.delegate = delegate;
-    self.deviceID = [[UIDevice currentDevice].identifierForVendor UUIDString];
+    // if ios: [UIDevice currentDevice].name if mac: [[NSHost currentHost] localizedName]
+#if TARGET_OS_IPHONE
+    self.deviceID = [UIDevice currentDevice].name;
+#else
+    self.deviceID = [[NSHost currentHost] localizedName];
+#endif
+    
     self.appID = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     self.oscLogging = osclogging;
     self.connectToWebClassifier = connectToWeb;
@@ -66,15 +72,26 @@
     if (connectToWeb) [self connectWebClassifierWebSocket];
     
     // register with Bonjour
+    // if ios: [UIDevice currentDevice].name if mac: [[NSHost currentHost] localizedName]
+#if TARGET_OS_IPHONE
     self.metatoneNetService = [[NSNetService alloc]
                                initWithDomain:@""
                                type:METATONE_SERVICE_TYPE
                                name:[UIDevice currentDevice].name
                                port:DEFAULT_PORT];
-    if (self.metatoneNetService != nil) {
+#else
+    self.metatoneNetService = [[NSNetService alloc]
+                               initWithDomain:@""
+                               type:METATONE_SERVICE_TYPE
+                               name:[[NSHost currentHost] localizedName]
+                               port:DEFAULT_PORT];
+#endif
+        if (self.metatoneNetService != nil) {
         [self.metatoneNetService setDelegate: self];
         [self.metatoneNetService publishWithOptions:0];
-        NSLog(@"NETWORK MANAGER: Metatone NetService Published - name: %@", [UIDevice currentDevice].name);
+        // if ios: [UIDevice currentDevice].name if mac: [[NSHost currentHost] localizedName]
+        
+       // NSLog(@"NETWORK MANAGER: Metatone NetService Published - name: %@", [[NSHost currentHost] localizedName]);
         
     }
     
