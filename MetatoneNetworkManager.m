@@ -120,13 +120,17 @@
 //
 //}
 
+#pragma mark - Main Web Classifier Connection Methods.
+
 #pragma TODO these two connection methods are problematic - what if they are called when already connected?
 - (void) startConnectingToWebClassifier {
     self.connectToWebClassifier = YES;
-        if (self.connectedToServer == SERVER_DISCONNECTED) {
-        NSLog(@"NETWORK MANAGER: Request to start connecting.");
+    if (self.connectedToServer == SERVER_DISCONNECTED)
+    {
+        NSLog(@"NETWORK MANAGER: startConnectingToWebClassifier was called.");
         NSLog(@"NETWORK MANAGER: WebSocket.readyState is %d",self.classifierWebSocket.readyState);
-        if (self.classifierWebSocket.readyState == SR_CLOSED || self.classifierWebSocket.readyState == SR_CONNECTING) {
+        if (self.classifierWebSocket.readyState == SR_CLOSED || self.classifierWebSocket.readyState == SR_CONNECTING)
+        {
             NSLog(@"NETWORK MANAGER: Classifier is closed, now starting to connect to WebClassifier");
             [self connectWebClassifierWebSocket];
         }
@@ -135,10 +139,12 @@
 
 
 - (void) stopConnectingToWebClassifier {
+    NSLog(@"NETWORK MANAGER: stopConnectingToWebClassifier was called.");
     self.connectToWebClassifier = NO;
     if (!self.connectedToLocalPerformanceServer) [self closeClassifierWebSocket];
 }
 
+# pragma mark - internal Web Classifier Connection Methods.
 
 -(void)connectWebClassifierWebSocket {
     [self connectClassifierWebSocketWithHostname:METATONE_CLASSIFIER_HOSTNAME andPort:METATONE_CLASSIFIER_PORT];
@@ -162,6 +168,7 @@
 }
 
 -(void)closeClassifierWebSocket {
+    NSLog(@"NETWORK MANAGER: closeClassifierWebSocket was called.");
     [self sendMessageOffline];
     [self.classifierWebSocket close];
     self.connectedToServer = SERVER_DISCONNECTED;
