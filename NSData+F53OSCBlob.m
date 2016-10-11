@@ -55,20 +55,26 @@
     
     for ( NSUInteger index = 0; index < maxLength; index++ )
     {
-        if ( buf[index] == 0 )
-            goto valid; // Found a null character within the buffer.
+        if ( buf[index] == 0 ) {
+//            goto valid; // Found a null character within the buffer.
+# pragma mark TODO - does this method make sense? Fixed it and removed a goto to kill a warning. Should still work properly.
+            UInt32 dataSize = 0;
+            dataSize = *((UInt32 *)buf);
+            dataSize = OSSwapBigToHostInt32( dataSize );
+            *outLength = dataSize;
+            buf += 4;
+            return [NSData dataWithBytes:buf length:dataSize];
+        }
     }
     return nil; // Buffer wasn't null terminated, so it's not a valid OSC blob.
     
-    UInt32 dataSize = 0;
-    
-valid:
-    
-    dataSize = *((UInt32 *)buf);
-    dataSize = OSSwapBigToHostInt32( dataSize );
-    *outLength = dataSize;
-    buf += 4;
-    return [NSData dataWithBytes:buf length:dataSize];
+//    UInt32 dataSize = 0;
+//    
+//valid:
+//    dataSize = *((UInt32 *)buf);
+//    dataSize = OSSwapBigToHostInt32( dataSize );
+//    *outLength = dataSize;
+//    buf += 4;
+//    return [NSData dataWithBytes:buf length:dataSize];
 }
-
 @end
