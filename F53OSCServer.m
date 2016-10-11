@@ -114,8 +114,9 @@
         _delegate = nil;
         _port = 0;
         _udpReplyPort = 0;
-        _tcpSocket = [F53OSCSocket socketWithTcpSocket:tcpSocket];
         _udpSocket = [F53OSCSocket socketWithUdpSocket:udpSocket];
+        _tcpSocket = [F53OSCSocket socketWithTcpSocket:tcpSocket];
+        
         _activeTcpSockets = [NSMutableDictionary dictionaryWithCapacity:1];
         _activeData = [NSMutableDictionary dictionaryWithCapacity:1];
         _activeState = [NSMutableDictionary dictionaryWithCapacity:1];
