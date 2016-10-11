@@ -70,10 +70,10 @@
 + (NSString *)getIPAddress;
 + (NSString *)getLocalBroadcastAddress;
 
-// Designated Initialiser
+/*! Designated Initialiser. */
 - (MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate  shouldOscLog: (bool) osclogging;
 - (MetatoneNetworkManager *) initWithDelegate: (id<MetatoneNetworkManagerDelegate>) delegate shouldOscLog: (bool) osclogging shouldConnectToWebClassifier: (bool) connectToWeb;
-// Stops all searches and deletes records of remote services and addresses.
+/*! Stops all searches and deletes records of remote services and addresses. */
 - (void)stopSearches;
 
 - (void)sendMessageWithAccelerationX:(double) X Y:(double) Y Z:(double) Z;
@@ -84,7 +84,11 @@
 - (void)sendMetatoneMessageViaServer:(NSString *)name withState:(NSString *)state;
 - (void)closeClassifierWebSocket;
 
-- (void) startConnectingToWebClassifier;
-- (void) stopConnectingToWebClassifier;
 
+/*! Opens the websocket and attempts to connect to the web classifier. */
+- (void) startConnectingToWebClassifier;
+/*! Disconnects from the web classifier performance and closes the websocket. */
+- (void) stopConnectingToWebClassifier;
+/*! Returns YES if either the websocket or OSC connection is connected to a classifier, otherwise returns NO. */
+- (bool) isClassifierConnected;
 @end

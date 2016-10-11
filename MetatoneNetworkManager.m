@@ -144,6 +144,11 @@
     if (!self.connectedToLocalPerformanceServer) [self closeClassifierWebSocket];
 }
 
+- (bool) isClassifierConnected {
+    // Check if web classifier is connected
+    return (self.connectedToServer == SERVER_CONNECTED);
+}
+
 # pragma mark - internal Web Classifier Connection Methods.
 
 -(void)connectWebClassifierWebSocket {
@@ -172,25 +177,29 @@
     [self sendMessageOffline];
     [self.classifierWebSocket close];
     self.connectedToServer = SERVER_DISCONNECTED;
+#pragma mark TODO There really should be a "web classifier closed" callback to the delegate.
+    [self.delegate stoppedSearchingForLoggingServer]; // TODO: change to a more appropriately named method
 }
 
 -(void)webSocketDidOpen:(SRWebSocket *)webSocket {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Opened: %@", [webSocket description]);
-    [self.delegate loggingServerFoundWithAddress:self.webClassifierHostname andPort:self.webClassifierPort andHostname:self.webClassifierHostname];
     self.connectedToServer = SERVER_CONNECTED;
     [self sendMessageOnline];
+    [self.delegate loggingServerFoundWithAddress:self.webClassifierHostname andPort:self.webClassifierPort andHostname:self.webClassifierHostname];
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Closed: %@, Clean: %d", reason,wasClean);
     self.classifierWebSocket = nil;
     self.connectedToServer = SERVER_DISCONNECTED;
+    [self.delegate stoppedSearchingForLoggingServer]; // TODO: change to a more appropriately named method
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error {
     NSLog(@"NETWORK MANAGER: Classifier WebSocket Failed: %@", [error description]);
     self.classifierWebSocket = nil;
     self.connectedToServer = SERVER_DISCONNECTED;
+    [self.delegate stoppedSearchingForLoggingServer]; // TODO: change to a more appropriately named method
 }
 
 -(void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
@@ -209,7 +218,6 @@
         if(USE_WEBSOCKET_CLASSIFIER) [self reconnectWebClassifierWebSocket];
     }
 }
-
 
 # pragma mark Searching Lifecycle
 -(void) stopSearches
